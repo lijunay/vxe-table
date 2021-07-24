@@ -13,7 +13,8 @@ export default {
     tableGroupColumn: Array,
     fixedColumn: Array,
     size: String,
-    fixedType: String
+    fixedType: String,
+    useCustomHeaderRowSpan: Boolean
   },
   data () {
     return {
@@ -188,7 +189,7 @@ export default {
   methods: {
     uploadColumn () {
       const { $parent: $xetable } = this
-      this.headerColumn = $xetable.isGroup ? convertToRows(this.tableGroupColumn) : [$xetable.scrollXLoad && this.fixedType ? this.fixedColumn : this.tableColumn]
+      this.headerColumn = $xetable.isGroup ? convertToRows(this.tableGroupColumn, this.useCustomHeaderRowSpan) : [$xetable.scrollXLoad && this.fixedType ? this.fixedColumn : this.tableColumn]
     },
     resizeMousedown (evnt, params) {
       const { column } = params

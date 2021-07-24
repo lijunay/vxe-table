@@ -1047,7 +1047,7 @@ const getConvertColumns = (columns) => {
   return result
 }
 
-const convertToRows = (originColumns) => {
+const convertToRows = (originColumns, useCustomRowSpan) => {
   let maxLevel = 1
   const traverse = (column, parent) => {
     if (parent) {
@@ -1080,13 +1080,47 @@ const convertToRows = (originColumns) => {
 
   const allColumns = getConvertColumns(originColumns)
 
-  allColumns.forEach((column) => {
-    if (column.childNodes && column.childNodes.length) {
-      column._rowSpan = 1
-    } else {
-      column._rowSpan = maxLevel - column._level + 1
+  const getGroupParentRowSpan = (columnId) => {
+    let r = 0
+    for (let i = 0; i < allColumns.length; i++) {
+      const column = allColumns[i]
+      if (column.id === columnId) {
+        if (column.rowSpan && column.rowSpan > 1) {
+          r = r + column.rowSpan
+        }
+        if (column.parentId) {
+          r = r + getGroupParentRowSpan(column.parentId)
+        }
+      }
     }
-    rows[column._level - 1].push(column)
+    return r
+  }
+
+  allColumns.forEach((column) => {
+    if (useCustomRowSpan) {
+      if (column.customRowSpan) {
+        column.rowSpan = column.customRowSpan
+      } else {
+        column.rowSpan = 1
+      }
+      let alevel = column.level - 1
+      if (column.parentId) {
+        let parentRowSpan = getGroupParentRowSpan(column.parentId)
+        parentRowSpan = parentRowSpan > 0 ? parentRowSpan - 1 : 0
+        alevel = alevel + parentRowSpan
+        if (alevel >= maxLevel) {
+          alevel = maxLevel - 1
+        }
+      }
+      rows[alevel].push(column)
+    } else {
+      if (column.childNodes && column.childNodes.length) {
+        column._rowSpan = 1
+      } else {
+        column._rowSpan = maxLevel - column._level + 1
+      }
+      rows[column._level - 1].push(column)
+    }
   })
 
   return rows
@@ -1101,7 +1135,7 @@ export default {
      * @param {Object} options 参数
      */
     _exportData (options) {
-      const { $xegrid, isGroup, tableGroupColumn, tableFullColumn, afterFullData, treeConfig, treeOpts, exportOpts } = this
+      const { $xegrid, isGroup, tableGroupColumn, tableFullColumn, useCustomHeaderRowSpan, afterFullData, treeConfig, treeOpts, exportOpts } = this
       const opts = Object.assign({
         // filename: '',
         // sheetName: '',
@@ -1183,7 +1217,7 @@ export default {
       }, { children: 'childNodes' })
       // 构建分组层级
       opts.columns = cols
-      opts.colgroups = convertToRows(groups)
+      opts.colgroups = convertToRows(groups, useCustomHeaderRowSpan)
       if (!opts.filename) {
         opts.filename = GlobalConfig.i18n(opts.original ? 'vxe.table.expOriginFilename' : 'vxe.table.expFilename', [XEUtils.toDateString(Date.now(), 'yyyyMMddHHmmss')])
       }
